@@ -8,8 +8,6 @@ import 'dart:convert';
 import 'dart:io';
 
 bool verbose = false;
-const String ArtifactoryBaseURL =
-    "https://artifact.invencolabs.com/artifactory";
 
 class FileListItem {
   final String uri;
@@ -41,9 +39,13 @@ class Repo {
 
   Repo(this.token, this.name, this.baseUri, this.key, this.baseFolderPath);
 
+  String buildURI(String subpath) {
+    return '$baseUri/$key/$baseFolderPath/$subpath';
+  }
+
   Future<Map<String, dynamic>> getRspJson(String uri) async {
     final response = await http.get(
-      Uri.parse(ArtifactoryBaseURL + uri),
+      Uri.parse(baseUri + uri),
       headers: {
         'X-JFrog-Art-Api': token,
       },
@@ -59,7 +61,7 @@ class Repo {
 
   Future<http.Response> doRestful(String uri) async {
     return await http.get(
-      Uri.parse(ArtifactoryBaseURL + uri),
+      Uri.parse(baseUri + uri),
       headers: {
         'X-JFrog-Art-Api': token,
       },
@@ -71,9 +73,13 @@ class Repo {
   }
 
   void download(String uri, String output) async {
-    final client = new http.Client();
+    bool validURI = Uri.parse(uri).isAbsolute;
+    if (!validURI) uri = buildURI(uri);
+
     var request = http.Request("GET", Uri.parse(uri));
     request.headers['X-JFrog-Art-Api'] = token;
+
+    final client = new http.Client();
     http.StreamedResponse response = await client.send(request);
     if (response.statusCode != 200) {
       print('Error: response status ${response.statusCode}');
@@ -238,7 +244,9 @@ class GetCommand extends Command {
 
   GetCommand(this.config) {
     argParser.addOption('uri',
-        abbr: 'u', help: "downloadUri from 'ls' command", mandatory: true);
+        abbr: 'u',
+        help: "full downloadUri from 'ls' command or subpath",
+        mandatory: true);
     argParser.addOption('out',
         abbr: 'o',
         help: "file to save the downloaded artifactory",
