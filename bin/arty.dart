@@ -2,6 +2,7 @@ import 'package:arty/arty.dart' as arty;
 import 'package:path/path.dart' as Path;
 import 'package:http/http.dart' as http;
 import 'package:args/args.dart';
+import 'package:filesize/filesize.dart';
 import 'package:args/command_runner.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -9,6 +10,27 @@ import 'dart:io';
 bool verbose = false;
 const String ArtifactoryBaseURL =
     "https://artifact.invencolabs.com/artifactory";
+
+class FileListItem {
+  final String uri;
+  final int size;
+  final DateTime lastModified;
+  final bool folder;
+
+  FileListItem.fromJson(Map<String, dynamic> json)
+      : uri = json['uri'],
+        size = json['size'],
+        lastModified = DateTime.parse(json['lastModified']),
+        folder = json['folder'] {}
+
+  String toString() {
+    if (folder) {
+      return '${uri}/\t${lastModified.toString()}';
+    } else {
+      return '${uri}\t${lastModified.toString()}  ${filesize(size)}';
+    }
+  }
+}
 
 class Repo {
   final String token;
@@ -104,7 +126,7 @@ class Repo {
   }
 
   /* File List */
-  void fileList(String? subPath) async {
+  void fileList(String? subPath, int limit) async {
     var uri = '/api/storage/' + key + '/' + baseFolderPath;
     if (subPath != null) uri = uri + '/' + subPath;
     uri = uri + '?list&listFolders=1';
@@ -114,6 +136,7 @@ class Repo {
       storageInfo(subPath);
       return;
     }
+
     final rspJson = jsonDecode(rsp.body);
     if (verbose) print('$rspJson\n');
     var files = rspJson['files'];
@@ -123,12 +146,17 @@ class Repo {
       print('0 result, empty folder');
       return;
     }
-    for (final ele in files) {
-      if (ele['folder']) {
-        print('- ${ele['uri']}/\t${ele['lastModified']}');
-      } else {
-        print('- ${ele['uri']}\t${ele['lastModified']}\t${ele['size']}');
+
+    List<FileListItem> fileList = [];
+    for (final ele in files) fileList.add(FileListItem.fromJson(ele));
+    fileList.sort((a, b) => b.lastModified.compareTo(a.lastModified));
+    int count = 0;
+    for (final i in fileList) {
+      if (limit != 0 && ++count > limit) {
+        print('Only list latest ${limit} items');
+        break;
       }
+      print('- $i');
     }
   }
 }
@@ -189,12 +217,17 @@ class LsCommand extends Command {
   LsCommand(this.config) {
     argParser.addOption('subpath',
         abbr: 's', help: 'subpath inside the repo base folder', defaultsTo: '');
+    argParser.addOption('limit',
+        abbr: 'l',
+        help: 'list the latest limited items. 0 means no limit',
+        defaultsTo: '10');
   }
 
   void run() {
     var repo = config.repo(config.currentRepo);
     String? subpath = argResults?['subpath'];
-    repo.fileList(subpath);
+    int limit = int.parse(argResults?['limit']);
+    repo.fileList(subpath, limit);
   }
 }
 
