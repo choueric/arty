@@ -93,7 +93,7 @@ class Repo {
     await response.stream.map((s) {
       received += s.length;
       var percent = ((received / length) * 100).round();
-      stdout.write("\r$percent %");
+      stdout.write("\r$received | $length ($percent%)");
       return s;
     }).pipe(sink);
     sink.close();
