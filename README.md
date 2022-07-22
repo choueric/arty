@@ -25,9 +25,7 @@ The configuration file is `$HOME/.arty.json`. Example:
 # Commands
 
 - list: list the repositories in configuration file.
-- ls: list the folder or file on Artifactory.
-- get: download one artifact on Artifactory with specified download URL.
+- choose: change the current repo
 
-# TODO
-- Only list the latest serveral folders
-- Add command to switch current repo
+- ls: list the folders or files on Artifactory.
+- get: download one artifact on Artifactory with specified download URL.

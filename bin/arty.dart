@@ -178,12 +178,13 @@ class Config {
 
   String currentRepo;
   final String token;
+  final String baseUri;
   Map<String, Repo> repoMap = Map();
 
   Config.fromJson(Map<String, dynamic> json)
       : currentRepo = json[keyCurrent],
-        token = json[keyToken] {
-    final String baseUri = json[keyBaseUri]!;
+        token = json[keyToken],
+        baseUri = json[keyBaseUri] {
     for (var r in json[keyRepoList]) {
       final String name = r[keyRepoName];
       repoMap[name] =
@@ -191,18 +192,45 @@ class Config {
     }
   }
 
-  Repo repo(String name) => repoMap[name]!;
+  Repo? repo(String name) => repoMap[name];
 
   String toString() {
     var ret = 'Current repo: $currentRepo\n';
     repoMap.forEach((k, v) => ret += '$v\n');
     return ret;
   }
+
+  Map<String, dynamic> toJson() {
+    Map<String, dynamic> obj = {
+      keyCurrent: currentRepo,
+      keyBaseUri: baseUri,
+      keyToken: token,
+    };
+    var repoList = <Map<String, dynamic>>[];
+    repoMap.forEach((k, v) {
+      Map<String, dynamic> repo = {
+        keyRepoName: k,
+        keyRepoKey: v.key,
+        keyRepoFolderPath: v.baseFolderPath,
+      };
+      repoList.add(repo);
+    });
+    obj[keyRepoList] = repoList;
+    return obj;
+  }
 }
 
 Future<Map<String, dynamic>> readJson(String filePath) async {
   var file = File(filePath);
   return await json.decode(await file.readAsString());
+}
+
+void writeJson(Map<String, dynamic> jsonObj, String filePath) async {
+  var encoder = new JsonEncoder.withIndent('  ');
+  var jsonString = encoder.convert(jsonObj);
+  File(filePath).openWrite()
+    ..write(jsonString)
+    ..close();
 }
 
 class ListCommand extends Command {
@@ -214,6 +242,33 @@ class ListCommand extends Command {
 
   void run() {
     print('$config');
+  }
+}
+
+class ChooseCommand extends Command {
+  final String name = "choose";
+  final String description = "choose the current repo profile";
+  final Config config;
+  final String configPath;
+
+  ChooseCommand(this.config, this.configPath) {}
+
+  void run() {
+    var args = argResults;
+    if (args == null || args.rest.length == 0) {
+      print('Must specify a repo to choose as current one');
+      return;
+    }
+
+    var repoName = args.rest[0];
+    var repo = config.repo(repoName);
+    if (repo == null) {
+      print('Could not find repo $repoName');
+      return;
+    }
+    config.currentRepo = repoName;
+    var jsonObj = config.toJson();
+    writeJson(jsonObj, configPath);
   }
 }
 
@@ -232,7 +287,7 @@ class LsCommand extends Command {
   }
 
   void run() {
-    var repo = config.repo(config.currentRepo);
+    var repo = config.repo(config.currentRepo)!;
     String? subpath = argResults?['subpath'];
     int limit = int.parse(argResults?['limit']);
     repo.fileList(subpath, limit);
@@ -263,7 +318,7 @@ class GetCommand extends Command {
       out = s[s.length - 1];
     }
 
-    var repo = config.repo(config.currentRepo);
+    var repo = config.repo(config.currentRepo)!;
     repo.download(uri, out);
   }
 }
@@ -276,6 +331,7 @@ void main(List<String> arguments) async {
   var runner =
       CommandRunner("arty", "A dart implementation of jfrog for Artifactory.")
         ..addCommand(ListCommand(config))
+        ..addCommand(ChooseCommand(config, configPath))
         ..addCommand(LsCommand(config))
         ..addCommand(GetCommand(config));
 
