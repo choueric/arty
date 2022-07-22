@@ -260,7 +260,7 @@ class ChooseCommand extends Command {
       return;
     }
 
-    var repoName = args.rest[0];
+    final repoName = args.rest[0];
     var repo = config.repo(repoName);
     if (repo == null) {
       print('Could not find repo $repoName');
@@ -278,8 +278,6 @@ class LsCommand extends Command {
   final Config config;
 
   LsCommand(this.config) {
-    argParser.addOption('subpath',
-        abbr: 's', help: 'subpath inside the repo base folder', defaultsTo: '');
     argParser.addOption('limit',
         abbr: 'l',
         help: 'list the latest limited items. 0 means no limit',
@@ -288,7 +286,11 @@ class LsCommand extends Command {
 
   void run() {
     var repo = config.repo(config.currentRepo)!;
-    String? subpath = argResults?['subpath'];
+    String? subpath = null;
+    var args = argResults;
+    if (args != null && args.rest.length > 0) {
+      subpath = args.rest[0];
+    }
     int limit = int.parse(argResults?['limit']);
     repo.fileList(subpath, limit);
   }
@@ -300,10 +302,6 @@ class GetCommand extends Command {
   final Config config;
 
   GetCommand(this.config) {
-    argParser.addOption('uri',
-        abbr: 'u',
-        help: "full downloadUri from 'ls' command or subpath",
-        mandatory: true);
     argParser.addOption('out',
         abbr: 'o',
         help: "file to save the downloaded artifactory",
@@ -311,8 +309,14 @@ class GetCommand extends Command {
   }
 
   void run() {
-    final uri = argResults?['uri'];
-    var out = argResults?['out'];
+    var args = argResults;
+    if (args == null || args.rest.length == 0) {
+      print('Must specify a repo to choose as current one');
+      return;
+    }
+
+    final uri = args.rest[0];
+    var out = args['out'];
     if (out == '') {
       final s = uri.split('/');
       out = s[s.length - 1];
