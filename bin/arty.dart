@@ -68,8 +68,8 @@ class Repo {
     );
   }
 
-  void dump() {
-    print('[$name]: $key -> $baseFolderPath');
+  String toString() {
+    return '[$name]: $key -> $baseFolderPath';
   }
 
   void download(String uri, String output) async {
@@ -192,9 +192,11 @@ class Config {
   }
 
   Repo repo(String name) => repoMap[name]!;
-  void dump() {
-    print('Current repo: $currentRepo');
-    repoMap.forEach((k, v) => v.dump());
+
+  String toString() {
+    var ret = 'Current repo: $currentRepo\n';
+    repoMap.forEach((k, v) => ret += '$v\n');
+    return ret;
   }
 }
 
@@ -211,7 +213,7 @@ class ListCommand extends Command {
   ListCommand(this.config) {}
 
   void run() {
-    config.dump();
+    print('$config');
   }
 }
 
