@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:args/args.dart';
 import 'package:filesize/filesize.dart';
 import 'package:args/command_runner.dart';
+import 'package:dolumns/dolumns.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -21,11 +22,11 @@ class FileListItem {
         lastModified = DateTime.parse(json['lastModified']),
         folder = json['folder'] {}
 
-  String toString() {
+  List<String> forOutput() {
     if (folder) {
-      return '${uri}/\t${lastModified.toString()}';
+      return ['$uri/', '${lastModified.toString()}', ''];
     } else {
-      return '${uri}\t${lastModified.toString()}  ${filesize(size)}';
+      return [uri, '${lastModified.toString()}', '${filesize(size)}'];
     }
   }
 }
@@ -69,7 +70,7 @@ class Repo {
   }
 
   String toString() {
-    return '[$name]: $key -> $baseFolderPath';
+    return '[$name]: $key/$baseFolderPath';
   }
 
   void download(String uri, String output) async {
@@ -157,13 +158,16 @@ class Repo {
     for (final ele in files) fileList.add(FileListItem.fromJson(ele));
     fileList.sort((a, b) => b.lastModified.compareTo(a.lastModified));
     int count = 0;
+    List<List<String>> forOutput = [];
     for (final i in fileList) {
       if (limit != 0 && ++count > limit) {
         print('Only list latest ${limit} items');
         break;
       }
-      print('- $i');
+      var l = ['-', ...i.forOutput()];
+      forOutput.add(l);
     }
+    print(dolumnify(forOutput));
   }
 }
 
@@ -196,7 +200,12 @@ class Config {
 
   String toString() {
     var ret = 'Current repo: $currentRepo\n';
-    repoMap.forEach((k, v) => ret += '$v\n');
+    repoMap.forEach((k, v) {
+      if (k == currentRepo)
+        ret += '* $v\n';
+      else
+        ret += '  $v\n';
+    });
     return ret;
   }
 
