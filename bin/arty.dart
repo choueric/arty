@@ -132,6 +132,23 @@ class Repo {
     }
   }
 
+  Future<String> fileDownloadUri(String fileSubPath) async {
+    var uri = '/api/storage/' + key + '/' + baseFolderPath;
+    uri = uri + '/' + fileSubPath;
+    var rspJson = await getRspJson(uri);
+    if (verbose) print('$rspJson\n');
+    var children = rspJson['children'];
+    if (children != null) {
+      print('error: ${fileSubPath} is a folder');
+      return "";
+    }
+    print('created     : ${rspJson['created']}');
+    print('lastModified: ${rspJson['lastModified']}');
+    print('lastUpdated : ${rspJson['lastUpdated']}');
+    print('size        : ${rspJson['size']}');
+    return rspJson['downloadUri'];
+  }
+
   /* File List */
   void fileList(String? subPath, int limit) async {
     var uri = '/api/storage/' + key + '/' + baseFolderPath;
@@ -317,22 +334,24 @@ class GetCommand extends Command {
         defaultsTo: '');
   }
 
-  void run() {
+  void run() async {
     var args = argResults;
     if (args == null || args.rest.length == 0) {
       print('Must specify a repo to choose as current one');
       return;
     }
 
-    final uri = args.rest[0];
+    final fileSubPath = args.rest[0];
     var out = args['out'];
     if (out == '') {
-      final s = uri.split('/');
+      final s = fileSubPath.split('/');
       out = s[s.length - 1];
     }
 
     var repo = config.repo(config.currentRepo)!;
-    repo.download(uri, out);
+    final downloadUri = await repo.fileDownloadUri(fileSubPath);
+    if (downloadUri == "") return;
+    repo.download(downloadUri, out);
   }
 }
 
