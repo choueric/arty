@@ -185,7 +185,8 @@ class Repo {
       forOutput.add(l);
     }
     print(dolumnify(forOutput));
-    print('${fileList.length - limit} entries more ...');
+    if (limit != 0 && (fileList.length - limit != 0))
+      print('${fileList.length - limit} entries more ...');
   }
 }
 
